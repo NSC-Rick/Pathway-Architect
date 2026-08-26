@@ -556,3 +556,83 @@ a:hover {
     padding: 0.5rem;
     text-align: center;
 }
+
+/* Proposal review cards */
+
+.proposals-section {
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    background-color: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 6px;
+}
+
+.proposals-section h4 {
+    margin-top: 0;
+    margin-bottom: 0.25rem;
+    color: #92400e;
+}
+
+.proposals-note {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+}
+
+.proposal-card {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.proposal-reason {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.proposal-fields {
+    margin-bottom: 0.75rem;
+}
+
+.proposal-field {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0.5rem;
+}
+
+.proposal-key {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.proposal-value {
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    font-size: 0.95rem;
+}
+
+.proposal-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.proposal-form {
+    display: inline;
+    margin: 0;
+}
+
+.proposal-data {
+    display: none;
+}
+
+.proposals-dismiss {
+    margin-top: 0.75rem;
+    text-align: right;
+}

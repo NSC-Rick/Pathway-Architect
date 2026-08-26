@@ -76,7 +76,40 @@
                 {% endfor %}
             </div>
 
-            <form method="post" action="{{ url_for('architect_message', pathway_id=pathway.id) }}" class="architect-form">
+            {% if proposals %}
+            <div class="proposals-section" id="proposals-section">
+                <h4>Suggested changes</h4>
+                <p class="proposals-note">The Architect proposes these updates. Review and apply only the ones that fit.</p>
+                {% for proposal in proposals %}
+                <div class="proposal-card">
+                    <div class="proposal-reason">{{ proposal.reason or 'Suggested update.' }}</div>
+                    <div class="proposal-fields">
+                        {% for key, value in proposal.fields.items() %}
+                        <div class="proposal-field">
+                            <span class="proposal-key">{{ key }}</span>
+                            <span class="proposal-value">{{ value }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="proposal-actions">
+                        <form method="post" action="{{ url_for('apply_proposal', pathway_id=pathway.id) }}" class="proposal-form">
+                            <textarea name="proposal" class="proposal-data" aria-hidden="true">{{ proposal | tojson }}</textarea>
+                            <button type="submit" class="btn btn-primary btn-small">Apply Suggestion</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+                <div class="proposals-dismiss">
+                    <a href="{{ url_for('workspace', pathway_id=pathway.id) }}" class="btn btn-secondary btn-small">Keep Current and Continue</a>
+                </div>
+            </div>
+            {% endif %}
+
+            <div id="architect-thinking" class="architect-is-thinking" style="display: none;">
+                Architect is thinking...
+            </div>
+
+            <form method="post" action="{{ url_for('architect_message', pathway_id=pathway.id) }}" class="architect-form" id="architect-form">
                 <div class="form-group">
                     <label for="architect-message">Your message</label>
                     <textarea id="architect-message" name="message" rows="3" placeholder="Describe what good looks like in your domain..."></textarea>
@@ -112,4 +145,10 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.getElementById('architect-form').addEventListener('submit', function () {
+        document.getElementById('architect-thinking').style.display = 'block';
+    });
+</script>
 {% endblock %}

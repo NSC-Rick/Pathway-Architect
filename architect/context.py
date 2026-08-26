@@ -50,6 +50,7 @@ def build_pathway_context(pathway):
 
     return {
         "information_domain": pathway.information_domain.name if pathway.information_domain else None,
+        "domain_description": pathway.information_domain.description if pathway.information_domain else None,
         "pathway_id": pathway.pathway_id,
         "name": pathway.name,
         "version": pathway.version,

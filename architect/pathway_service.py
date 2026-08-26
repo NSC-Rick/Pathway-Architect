@@ -15,7 +15,7 @@ from models import (
 from .ai_service import generate_architect_response, ArchitectAIError
 from .prompts import OPENING_MESSAGE
 from .schemas import ArchitectResponse, Proposal
-from .validation import validate_proposals, ProposalValidationError
+from .validation import validate_proposal, ProposalValidationError
 
 
 class PathwayServiceError(Exception):
@@ -246,13 +246,12 @@ def _validate_ownership(pathway, user):
 
 
 def process_architect_turn(pathway, user, user_content):
-    """Run one complete Architect turn: persist messages, call AI, validate, apply, commit.
+    """Run one Architect turn: persist SME and Architect messages, then return proposals.
 
-    All persistence for the turn (messages + Pathway mutations) is wrapped in a
-    nested transaction so that a failure leaves the existing Pathway unchanged.
+    The Pathway is NOT altered here. Proposals are returned to the caller
+    (the workspace) so the SME can review and approve or reject each one.
     """
-    # Ensure the Pathway and User are bound to the current session before
-    # validation, context building, or applying any proposals.
+    # Ensure the Pathway and User are bound to the current session.
     pathway = db.session.merge(pathway)
     user = db.session.merge(user)
 
@@ -274,8 +273,6 @@ def process_architect_turn(pathway, user, user_content):
             ai_response = generate_architect_response(pathway, prompt_messages, user_content)
 
             _add_architect_message(conversation, ai_response.message)
-            validate_proposals(pathway, ai_response.proposals)
-            _apply_proposals(pathway, ai_response.proposals)
 
             # Update draft status to reflect active Architect engagement.
             if pathway.draft_status in ('new', 'saved'):
@@ -283,9 +280,28 @@ def process_architect_turn(pathway, user, user_content):
 
         db.session.commit()
         return ai_response
-    except (ArchitectAIError, ProposalValidationError) as e:
-        # Convert expected errors into a single, safe service-level error.
+    except ArchitectAIError as e:
+        # Convert expected AI errors into a single, safe service-level error.
         raise PathwayServiceError(str(e)) from e
     except Exception as e:
         # Wrap unexpected errors without exposing sensitive details.
         raise PathwayServiceError(f'Architect turn failed: {e}') from e
+
+
+def apply_architect_proposal(pathway, user, proposal):
+    """Apply a single SME-approved Architect proposal to the Pathway."""
+    pathway = db.session.merge(pathway)
+    user = db.session.merge(user)
+
+    _validate_ownership(pathway, user)
+
+    try:
+        with db.session.begin_nested():
+            validate_proposal(pathway, proposal)
+            _APPLY_DISPATCH[proposal.operation](pathway, proposal)
+
+        db.session.commit()
+    except ProposalValidationError as e:
+        raise PathwayServiceError(str(e)) from e
+    except Exception as e:
+        raise PathwayServiceError(f'Could not apply proposal: {e}') from e

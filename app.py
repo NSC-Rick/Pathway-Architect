@@ -1,4 +1,5 @@
 import os
+import json
 import click
 from datetime import datetime
 from flask import Flask, render_template, redirect, url_for, request, flash
@@ -6,7 +7,8 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from dotenv import load_dotenv
 from models import db, User, InformationDomain, Pathway, Stage, Milestone, Evidence, Resource, Guardrail, ArchitectConversation, ArchitectMessage
 from architect.prompts import OPENING_MESSAGE
-from architect.pathway_service import process_architect_turn, PathwayServiceError
+from architect.pathway_service import process_architect_turn, apply_architect_proposal, PathwayServiceError
+from architect.schemas import Proposal
 
 load_dotenv()
 
@@ -279,7 +281,7 @@ def workspace(pathway_id):
         # Show the opening question before a conversation record exists.
         messages = [{'role': 'architect', 'content': OPENING_MESSAGE}]
 
-    return render_template('workspace.html', pathway=pathway, messages=messages, architect_error=None)
+    return render_template('workspace.html', pathway=pathway, messages=messages, proposals=[], architect_error=None)
 
 
 @app.route('/pathway/<int:pathway_id>/architect', methods=['POST'])
@@ -296,13 +298,60 @@ def architect_message(pathway_id):
         return redirect(url_for('workspace', pathway_id=pathway.id))
 
     try:
-        process_architect_turn(pathway, current_user, user_content)
+        ai_response = process_architect_turn(pathway, current_user, user_content)
     except PathwayServiceError as e:
         flash(f'Architect could not process that message: {e}', 'error')
+        return redirect(url_for('workspace', pathway_id=pathway.id))
     except Exception:
         # Log the real error server-side; show a calm user-facing message.
         app.logger.exception('Architect turn failed')
-        flash('The Architect encountered an issue. Your Pathway has not been changed.', 'error')
+        flash('The Architect encountered an issue. Your message has not been lost. Please try again.', 'error')
+        return redirect(url_for('workspace', pathway_id=pathway.id))
+
+    # Render the workspace so the SME can review any proposals before approving.
+    conversation = ArchitectConversation.query.filter_by(
+        pathway_id=pathway.id, user_id=current_user.id
+    ).order_by(ArchitectConversation.created_at.desc()).first()
+
+    messages = []
+    if conversation:
+        messages = ArchitectMessage.query.filter_by(conversation_id=conversation.id).order_by(ArchitectMessage.created_at).all()
+    else:
+        messages = [{'role': 'architect', 'content': OPENING_MESSAGE}]
+
+    proposals = [p.model_dump() for p in (ai_response.proposals or [])]
+
+    return render_template(
+        'workspace.html',
+        pathway=pathway,
+        messages=messages,
+        proposals=proposals,
+        architect_error=None,
+    )
+
+
+@app.route('/pathway/<int:pathway_id>/apply', methods=['POST'])
+@login_required
+def apply_proposal(pathway_id):
+    pathway = _user_pathways_query().filter_by(id=pathway_id).first()
+    if not pathway:
+        flash('Pathway not found or access denied.', 'error')
+        return redirect(url_for('home'))
+
+    proposal_data = request.form.get('proposal')
+    if not proposal_data:
+        flash('No proposal to apply.', 'error')
+        return redirect(url_for('workspace', pathway_id=pathway.id))
+
+    try:
+        proposal = Proposal.model_validate_json(proposal_data)
+        apply_architect_proposal(pathway, current_user, proposal)
+        flash('Suggestion applied.', 'success')
+    except PathwayServiceError as e:
+        flash(f'Could not apply suggestion: {e}', 'error')
+    except Exception:
+        app.logger.exception('Apply proposal failed')
+        flash('The suggestion could not be applied.', 'error')
 
     return redirect(url_for('workspace', pathway_id=pathway.id))
 

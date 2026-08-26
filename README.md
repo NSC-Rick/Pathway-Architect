@@ -1,6 +1,6 @@
 # North Star Pathway Architect
 
-**Phase:** PA-003 — Text Architect Conversation & Structured Pathway Evolution
+**Phase:** PA-003 — AI Pathway Architect Conversational Core
 
 North Star Pathway Architect is the sister application to North Star Proficiency Builder. Proficiency Builder *runs* Pathways. Pathway Architect *creates* them.
 
@@ -10,29 +10,31 @@ This application is being built as a separate, self-contained Flask project. It 
 
 - Text-only conversation with the AI Pathway Architect in the right-hand workspace panel
 - Conversation persistence (`ArchitectConversation`, `ArchitectMessage`)
-- Deterministic, testable Pathway context serialization for the Architect
+- Deterministic, testable Pathway context serialization for the Architect, including the Information Domain
 - Structured two-part AI response contract (`message` + `proposals`)
 - Pydantic response schema validated by `openai` structured-output parsing
+- Human-in-the-loop control: the Architect **proposes** Pathway refinements; the SME **approves or rejects** each one
 - Dedicated `architect/` service package:
   - `prompts.py` — Architect system behavior
   - `context.py` — current Pathway serialization
   - `schemas.py` — structured response and proposal definitions
   - `ai_service.py` — OpenAI API interaction
   - `validation.py` — server-side proposal validation
-  - `pathway_service.py` — apply validated operations through the model layer
-- Server-side validation of all proposed Pathway mutations
-- Constrained mutation vocabulary: `update_pathway`, `add_stage`, `update_stage`, `add_milestone`, `update_milestone`, `add_evidence`, `add_resource`, `add_guardrail`
-- Transaction-safe application of related proposals with savepoint rollback on failure
-- Workspace that reflects persisted Pathway changes after a successful Architect turn
+  - `pathway_service.py` — conversation persistence and approved-proposal application
+- Constrained, validated mutation vocabulary
+- Server-side validation of all proposals before any Pathway change
+- Transaction-safe application of one approved proposal at a time
+- Workspace that reflects approved Pathway changes after the SME confirms them
 - Opening discovery question for new and lightly developed Pathways
 - Artifact-vs-demonstrated-proficiency reasoning guidance in the Architect prompt
 - Ownership and access-control checks preserved from PA-002
-- Deterministic unit tests for conversation, validation, persistence, and workspace
+- Deterministic unit tests for conversation, validation, approval, and workspace
 
 ## What is NOT implemented in PA-003
 
 - ElevenLabs or any voice/audio integration
 - Browser microphone or speech-to-text
+- Automatic, silent Pathway rewrites by the AI
 - Pathway publishing or Proficiency Builder synchronization
 - Pathway Intelligence, analytics, billing, multi-tenancy, or complex versioning
 - Real-time streaming UI or frontend frameworks
@@ -104,19 +106,27 @@ python -m unittest discover tests -v
 
 AI unit tests mock the `generate_architect_response` boundary so they do not require a live paid API call.
 
-## Live AI verification
+## How the conversation works
 
-With `OPENAI_API_KEY` configured:
+1. The SME opens a Pathway Workspace and sees the opening discovery question.
+2. The SME sends a message to the Architect.
+3. The Architect responds conversationally and may include one or more structured proposals.
+4. The workspace displays the proposals in the right panel.
+5. The SME reviews each suggestion and clicks:
+   - **Apply Suggestion** to apply it to the Pathway
+   - **Keep Current and Continue** to leave the Pathway unchanged
+6. The left panel updates only after the SME explicitly approves a change.
 
-1. Log in as the SME user.
-2. Open the seeded **Loan Readiness** Pathway.
-3. In the Architect panel, type:  
-   "When someone comes to us well prepared for a loan, they understand why they need the money, know their numbers, and have thought about how the business will repay it."
-4. Continue the conversation.
-5. Test the artifact-vs-proficiency distinction:  
-   - "They need their financial statements."  
-   - "They need to understand them, not just have them."
-6. Verify that the left-hand workspace updates with any valid structured proposals.
+## Conversation guidance
+
+A good prompt for the Loan Readiness test:
+
+> "When someone comes to us well prepared for a loan, they understand why they need the money, know their numbers, and have thought about how the business will repay it."
+
+You can then test the artifact-vs-proficiency distinction:
+
+- "They need their financial statements."
+- "They need to understand them, not just have them."
 
 If `OPENAI_API_KEY` is not configured, the Architect route will show a calm error and the Pathway will not be modified.
 
@@ -157,4 +167,5 @@ Pathway-Architect/
 - This application uses its own SQLite database by default.
 - It does not connect to North Star Proficiency Builder's production PostgreSQL database.
 - Voice and ElevenLabs are explicitly out of scope for PA-003.
+- The AI cannot silently modify the authoritative Pathway; every change requires SME approval.
 - The live AI conversation quality depends on the configured model and API availability.

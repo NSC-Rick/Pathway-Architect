@@ -426,6 +426,31 @@ class TestArchitect(unittest.TestCase):
             self.assertEqual(sent_messages[1]['role'], 'user')
             self.assertEqual(sent_messages[1]['content'], 'Narration.')
 
+    @patch('architect.ai_service.OpenAI')
+    @patch.dict('os.environ', {'OPENAI_API_KEY': 'test-key'})
+    def test_openai_request_does_not_send_temperature(self, mock_openai):
+        with app.app_context():
+            pathway = self._pathway()
+            conversation = ArchitectConversation(pathway_id=pathway.id, user_id=1, status='active')
+            db.session.add(conversation)
+            db.session.commit()
+
+            user_msg = ArchitectMessage(conversation_id=conversation.id, role='user', content='User says.')
+            db.session.add(user_msg)
+            db.session.commit()
+
+            mock_client = MagicMock()
+            mock_choice = MagicMock()
+            mock_choice.message.parsed = _make_response('Response.', [])
+            mock_client.beta.chat.completions.parse.return_value.choices = [mock_choice]
+            mock_openai.return_value = mock_client
+
+            from architect.ai_service import generate_architect_response
+            generate_architect_response(pathway, [user_msg], 'New message.')
+
+            call = mock_client.beta.chat.completions.parse.call_args
+            self.assertNotIn('temperature', call.kwargs)
+
     @patch('architect.pathway_service.generate_architect_response')
     def test_ai_failure_persists_user_message_but_not_architect_message(self, mock_ai):
         with app.app_context():

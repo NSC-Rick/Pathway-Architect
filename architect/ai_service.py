@@ -67,7 +67,6 @@ def generate_architect_response(pathway, conversation_messages, user_content):
             model=model,
             messages=messages,
             response_format=ArchitectResponse,
-            temperature=0.4,
         )
     except APIError as e:
         # Log the original OpenAI exception with model and status before wrapping.

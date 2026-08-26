@@ -89,7 +89,7 @@ def _add_architect_message(conversation, content):
 
 
 def _apply_update_pathway(pathway, proposal):
-    for key, value in proposal.fields.items():
+    for key, value in proposal.fields_dict.items():
         if hasattr(pathway, key):
             setattr(pathway, key, value)
     if proposal.reason:
@@ -101,7 +101,7 @@ def _apply_update_pathway(pathway, proposal):
 
 
 def _apply_add_stage(pathway, proposal):
-    fields = proposal.fields or {}
+    fields = proposal.fields_dict
     stage_id = fields.get('stage_id') or _generate_id('STG', pathway.stages, 'stage_id')
     sequence = fields.get('sequence')
     if sequence is None:
@@ -124,7 +124,7 @@ def _apply_update_stage(pathway, proposal):
     stage = _find_stage_by_stage_id(pathway, proposal.target)
     if not stage:
         raise PathwayServiceError(f'Stage {proposal.target} not found.')
-    for key, value in proposal.fields.items():
+    for key, value in proposal.fields_dict.items():
         if hasattr(stage, key):
             setattr(stage, key, value)
     if proposal.reason:
@@ -140,7 +140,7 @@ def _apply_add_milestone(pathway, proposal):
     stage = _find_stage_by_stage_id(pathway, proposal.target)
     if not stage:
         raise PathwayServiceError(f'Stage {proposal.target} not found for add_milestone.')
-    fields = proposal.fields or {}
+    fields = proposal.fields_dict
     milestone_id = fields.get('milestone_id') or _generate_id('MIL', pathway.milestones, 'milestone_id')
     milestone = Milestone(
         pathway_id=pathway.id,
@@ -159,14 +159,14 @@ def _apply_update_milestone(pathway, proposal):
     milestone = _find_milestone_by_milestone_id(pathway, proposal.target)
     if not milestone:
         raise PathwayServiceError(f'Milestone {proposal.target} not found.')
-    for key, value in proposal.fields.items():
+    for key, value in proposal.fields_dict.items():
         if hasattr(milestone, key):
             setattr(milestone, key, value)
 
 
 def _apply_add_evidence(pathway, proposal):
     from .validation import _find_stage_by_stage_id
-    fields = proposal.fields or {}
+    fields = proposal.fields_dict
     stage_id = None
     stage = None
     if proposal.target:
@@ -187,7 +187,7 @@ def _apply_add_evidence(pathway, proposal):
 
 def _apply_add_resource(pathway, proposal):
     from .validation import _find_stage_by_stage_id
-    fields = proposal.fields or {}
+    fields = proposal.fields_dict
     stage_id = None
     stage = None
     if proposal.target:
@@ -208,7 +208,7 @@ def _apply_add_resource(pathway, proposal):
 
 
 def _apply_add_guardrail(pathway, proposal):
-    fields = proposal.fields or {}
+    fields = proposal.fields_dict
     guardrail_id = fields.get('guardrail_id') or _generate_id('GUA', pathway.guardrails, 'guardrail_id')
     advisor_attention = fields.get('advisor_attention', False)
     if isinstance(advisor_attention, str):

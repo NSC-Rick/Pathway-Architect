@@ -100,7 +100,7 @@ def validate_proposal(pathway, proposal):
         raise ProposalValidationError(f'Unknown operation: {proposal.operation}')
 
     allowed_fields = ALLOWED_FIELDS.get(proposal.operation, set())
-    for key in (proposal.fields or {}):
+    for key in (proposal.fields_dict):
         if key not in allowed_fields:
             raise ProposalValidationError(
                 f'Unsupported field "{key}" for operation {proposal.operation}. Allowed: {sorted(allowed_fields)}'
@@ -108,7 +108,7 @@ def validate_proposal(pathway, proposal):
 
     required = REQUIRED_FIELDS.get(proposal.operation, set())
     for key in required:
-        if key not in (proposal.fields or {}) or not (proposal.fields or {}).get(key):
+        if key not in (proposal.fields_dict) or not (proposal.fields_dict).get(key):
             raise ProposalValidationError(f'Operation {proposal.operation} requires field "{key}".')
 
     if proposal.operation == 'update_pathway':

@@ -515,6 +515,28 @@ class TestArchitect(unittest.TestCase):
         self.assertIn('Original Architect AI error before wrapping', cm.output[0])
         self.assertIn('OpenAI API status 400', cm.output[0])
 
+    # --- PA-003.3 strict schema tests ---
+
+    def test_architect_response_schema_has_additional_properties_false(self):
+        from architect.schemas import ArchitectResponse
+        schema = ArchitectResponse.model_json_schema()
+        # Pydantic v2 places model defs under '$defs' and uses $ref for nested models.
+        # The 'fields' object is ProposalFields, whose schema must have additionalProperties: false.
+        fields_schema = schema['$defs']['ProposalFields']
+        self.assertIn('additionalProperties', fields_schema)
+        self.assertIs(fields_schema['additionalProperties'], False)
+
+    def test_proposal_rejects_arbitrary_fields(self):
+        from architect.schemas import Proposal
+        with self.assertRaises(Exception):
+            Proposal(operation='update_pathway', fields={'unknown_field': 'value'}, reason='Test.')
+
+    def test_proposal_fields_dict_excludes_none_values(self):
+        from architect.schemas import Proposal
+        proposal = Proposal(operation='update_pathway', fields={'purpose': 'A clearer purpose.'}, reason='Test.')
+        self.assertEqual(proposal.fields_dict.get('purpose'), 'A clearer purpose.')
+        self.assertNotIn('outcome', proposal.fields_dict)
+
 
 if __name__ == '__main__':
     unittest.main()

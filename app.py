@@ -321,7 +321,7 @@ def architect_message(pathway_id):
     else:
         messages = [{'role': 'architect', 'content': OPENING_MESSAGE}]
 
-    proposals = [p.model_dump() for p in (ai_response.proposals or [])]
+    proposals = [p.model_dump(exclude_none=True) for p in (ai_response.proposals or [])]
 
     return render_template(
         'workspace.html',

@@ -64,10 +64,25 @@
     </div>
 
     <div class="workspace-side">
-        <div class="card architect-placeholder">
+        <div class="card architect-panel">
             <h3>AI Pathway Architect</h3>
-            <p class="placeholder-message">Conversational Pathway design will be enabled in PA-003.</p>
-            <p class="placeholder-note">In future phases, this is where the SME will talk with the Architect while watching the Pathway emerge on the left.</p>
+
+            <div class="conversation-history" id="conversation-history">
+                {% for msg in messages %}
+                <div class="message message-{{ msg.role }}">
+                    <div class="message-sender">{{ 'SME' if msg.role == 'user' else 'Architect' }}</div>
+                    <div class="message-content">{{ msg.content }}</div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <form method="post" action="{{ url_for('architect_message', pathway_id=pathway.id) }}" class="architect-form">
+                <div class="form-group">
+                    <label for="architect-message">Your message</label>
+                    <textarea id="architect-message" name="message" rows="3" placeholder="Describe what good looks like in your domain..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Send to Architect</button>
+            </form>
         </div>
     </div>
 </div>

@@ -496,3 +496,63 @@ a:hover {
         justify-content: space-between;
     }
 }
+
+/* Architect conversation panel */
+
+.architect-panel {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 200px);
+}
+
+.conversation-history {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 1rem;
+    max-height: 400px;
+}
+
+.message {
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    border-radius: 6px;
+}
+
+.message-user {
+    background-color: #eff6ff;
+    border-left: 3px solid var(--primary-color);
+}
+
+.message-architect {
+    background-color: #f8fafc;
+    border-left: 3px solid var(--secondary-color);
+}
+
+.message-sender {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.message-content {
+    color: var(--text-primary);
+    white-space: pre-wrap;
+}
+
+.architect-form {
+    margin-top: auto;
+}
+
+.architect-form textarea {
+    resize: vertical;
+}
+
+.architect-is-thinking {
+    font-style: italic;
+    color: var(--text-secondary);
+    padding: 0.5rem;
+    text-align: center;
+}

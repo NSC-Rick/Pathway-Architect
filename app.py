@@ -4,7 +4,9 @@ from datetime import datetime
 from flask import Flask, render_template, redirect, url_for, request, flash
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from dotenv import load_dotenv
-from models import db, User, InformationDomain, Pathway, Stage, Milestone, Evidence, Resource, Guardrail
+from models import db, User, InformationDomain, Pathway, Stage, Milestone, Evidence, Resource, Guardrail, ArchitectConversation, ArchitectMessage
+from architect.prompts import OPENING_MESSAGE
+from architect.pathway_service import process_architect_turn, PathwayServiceError
 
 load_dotenv()
 
@@ -266,7 +268,43 @@ def workspace(pathway_id):
 
         return redirect(url_for('workspace', pathway_id=pathway.id))
 
-    return render_template('workspace.html', pathway=pathway)
+    conversation = ArchitectConversation.query.filter_by(
+        pathway_id=pathway.id, user_id=current_user.id
+    ).order_by(ArchitectConversation.created_at.desc()).first()
+
+    messages = []
+    if conversation:
+        messages = ArchitectMessage.query.filter_by(conversation_id=conversation.id).order_by(ArchitectMessage.created_at).all()
+    else:
+        # Show the opening question before a conversation record exists.
+        messages = [{'role': 'architect', 'content': OPENING_MESSAGE}]
+
+    return render_template('workspace.html', pathway=pathway, messages=messages, architect_error=None)
+
+
+@app.route('/pathway/<int:pathway_id>/architect', methods=['POST'])
+@login_required
+def architect_message(pathway_id):
+    pathway = _user_pathways_query().filter_by(id=pathway_id).first()
+    if not pathway:
+        flash('Pathway not found or access denied.', 'error')
+        return redirect(url_for('home'))
+
+    user_content = request.form.get('message', '').strip()
+    if not user_content:
+        flash('Please enter a message for the Architect.', 'error')
+        return redirect(url_for('workspace', pathway_id=pathway.id))
+
+    try:
+        process_architect_turn(pathway, current_user, user_content)
+    except PathwayServiceError as e:
+        flash(f'Architect could not process that message: {e}', 'error')
+    except Exception:
+        # Log the real error server-side; show a calm user-facing message.
+        app.logger.exception('Architect turn failed')
+        flash('The Architect encountered an issue. Your Pathway has not been changed.', 'error')
+
+    return redirect(url_for('workspace', pathway_id=pathway.id))
 
 
 @app.route('/login', methods=['GET', 'POST'])

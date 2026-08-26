@@ -154,3 +154,26 @@ class Guardrail(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     __table_args__ = (db.UniqueConstraint('pathway_id', 'guardrail_id'),)
+
+
+class ArchitectConversation(db.Model):
+    __tablename__ = 'architect_conversations'
+
+    id = db.Column(db.Integer, primary_key=True)
+    pathway_id = db.Column(db.Integer, db.ForeignKey('pathways.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    status = db.Column(db.String(50), nullable=False, default='active')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    messages = db.relationship('ArchitectMessage', backref='conversation', lazy=True, order_by='ArchitectMessage.created_at', cascade='all, delete-orphan')
+
+
+class ArchitectMessage(db.Model):
+    __tablename__ = 'architect_messages'
+
+    id = db.Column(db.Integer, primary_key=True)
+    conversation_id = db.Column(db.Integer, db.ForeignKey('architect_conversations.id'), nullable=False)
+    role = db.Column(db.String(50), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)

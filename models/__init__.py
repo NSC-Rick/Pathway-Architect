@@ -13,4 +13,6 @@ from .models import (
     Evidence,
     Resource,
     Guardrail,
+    ArchitectConversation,
+    ArchitectMessage,
 )

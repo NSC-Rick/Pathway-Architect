@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Optional, Union
 from pydantic import BaseModel, Field, ConfigDict
 
 
@@ -6,50 +6,50 @@ class ProposalFields(BaseModel):
     """Explicit, closed set of proposal fields supported by the Pathway Architect.
 
     Using a typed model with extra='forbid' makes the JSON schema compatible with
-    OpenAI's strict Structured Outputs, which requires 'additionalProperties' to
-    be supplied and false for every object.
+    OpenAI's strict Structured Outputs. Every field has a concrete type so the
+    generated schema contains valid 'type' keys; open-ended 'Any' is avoided.
     """
     model_config = ConfigDict(extra='forbid')
 
     # Pathway-level fields
-    name: Optional[Any] = Field(None)
-    purpose: Optional[Any] = Field(None)
-    intended_audience: Optional[Any] = Field(None)
-    desired_proficiency_outcome: Optional[Any] = Field(None)
-    draft_status: Optional[Any] = Field(None)
+    name: Optional[str] = Field(None)
+    purpose: Optional[str] = Field(None)
+    intended_audience: Optional[str] = Field(None)
+    desired_proficiency_outcome: Optional[str] = Field(None)
+    draft_status: Optional[str] = Field(None)
 
     # Stage fields
-    stage_id: Optional[Any] = Field(None)
-    sequence: Optional[Any] = Field(None)
-    outcome: Optional[Any] = Field(None)
+    stage_id: Optional[str] = Field(None)
+    sequence: Optional[int] = Field(None)
+    outcome: Optional[str] = Field(None)
 
     # Milestone fields
-    milestone_id: Optional[Any] = Field(None)
-    title: Optional[Any] = Field(None)
-    description: Optional[Any] = Field(None)
-    completion_criteria: Optional[Any] = Field(None)
-    evidence_considered: Optional[Any] = Field(None)
+    milestone_id: Optional[str] = Field(None)
+    title: Optional[str] = Field(None)
+    description: Optional[str] = Field(None)
+    completion_criteria: Optional[str] = Field(None)
+    evidence_considered: Optional[str] = Field(None)
 
     # Evidence fields
-    evidence_id: Optional[Any] = Field(None)
-    evidence_type: Optional[Any] = Field(None)
-    demonstrated_proficiency: Optional[Any] = Field(None)
+    evidence_id: Optional[str] = Field(None)
+    evidence_type: Optional[str] = Field(None)
+    demonstrated_proficiency: Optional[str] = Field(None)
 
     # Resource fields
-    resource_id: Optional[Any] = Field(None)
-    resource_type: Optional[Any] = Field(None)
-    reference: Optional[Any] = Field(None)
+    resource_id: Optional[str] = Field(None)
+    resource_type: Optional[str] = Field(None)
+    reference: Optional[str] = Field(None)
 
     # Guardrail fields
-    guardrail_id: Optional[Any] = Field(None)
-    category: Optional[Any] = Field(None)
-    trigger_conditions: Optional[Any] = Field(None)
-    escalation_considerations: Optional[Any] = Field(None)
-    advisor_attention: Optional[Any] = Field(None)
+    guardrail_id: Optional[str] = Field(None)
+    category: Optional[str] = Field(None)
+    trigger_conditions: Optional[str] = Field(None)
+    escalation_considerations: Optional[str] = Field(None)
+    advisor_attention: Optional[Union[str, bool]] = Field(None)
 
     # Common metadata fields
-    sme_notes: Optional[Any] = Field(None)
-    architect_rationale: Optional[Any] = Field(None)
+    sme_notes: Optional[str] = Field(None)
+    architect_rationale: Optional[str] = Field(None)
 
 
 class Proposal(BaseModel):

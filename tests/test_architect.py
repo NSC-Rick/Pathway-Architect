@@ -537,6 +537,32 @@ class TestArchitect(unittest.TestCase):
         self.assertEqual(proposal.fields_dict.get('purpose'), 'A clearer purpose.')
         self.assertNotIn('outcome', proposal.fields_dict)
 
+    def test_architect_response_schema_typed_no_untyped_anyOf(self):
+        from architect.schemas import ArchitectResponse
+        schema = ArchitectResponse.model_json_schema()
+        defs = schema[chr(36) + 'defs']
+        props = defs['ProposalFields']['properties']
+        for field_name, field_schema in props.items():
+            if 'anyOf' in field_schema:
+                for branch in field_schema['anyOf']:
+                    self.assertIn('type', branch,
+                                  f"Field '{field_name}' has an anyOf branch without a 'type' key: {branch}")
+
+    def test_architect_response_validates_representative_proposals(self):
+        from architect.schemas import ArchitectResponse, Proposal
+        proposals = [
+            Proposal(operation='update_pathway', fields={'purpose': 'A clearer purpose.'}),
+            Proposal(operation='add_stage', fields={'name': 'Define the Need', 'sequence': 1}),
+            Proposal(operation='update_stage', target='STG-01', fields={'name': 'Renamed Stage'}),
+            Proposal(operation='add_milestone', target='STG-01', fields={'title': 'Milestone 1'}),
+            Proposal(operation='update_milestone', target='MIL-01', fields={'title': 'Renamed Milestone'}),
+            Proposal(operation='add_evidence', target='STG-01', fields={'evidence_type': 'Document', 'description': 'A tax return.'}),
+            Proposal(operation='add_resource', target='STG-01', fields={'title': 'SBA Resource', 'resource_type': 'URL'}),
+            Proposal(operation='add_guardrail', fields={'category': 'Advisory', 'description': 'Consult a CPA.', 'advisor_attention': True}),
+        ]
+        response = ArchitectResponse(message='Representative proposals.', proposals=proposals)
+        self.assertEqual(len(response.proposals), 8)
+
 
 if __name__ == '__main__':
     unittest.main()

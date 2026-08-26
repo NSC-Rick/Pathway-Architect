@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="login-container">
+    <div class="login-card">
+        <h2>North Star Pathway Architect</h2>
+        <p class="subtitle">Turn expertise into structured proficiency pathways.</p>
+
+        <form method="post" action="{{ url_for('login') }}">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" required autofocus>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Log in</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

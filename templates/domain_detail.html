@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="detail-header">
+    <h2>{{ domain.name }}</h2>
+    <a href="{{ url_for('home') }}" class="btn btn-secondary">Back to Domains</a>
+</div>
+
+{% if domain.description %}
+<p class="context-description">{{ domain.description }}</p>
+{% endif %}
+
+<h3>Pathways</h3>
+
+{% if pathways %}
+<div class="pathway-list">
+    {% for pathway in pathways %}
+    <div class="pathway-item card">
+        <div class="pathway-info">
+            <span class="pathway-title">
+                <a href="{{ url_for('workspace', pathway_id=pathway.id) }}">{{ pathway.name }}</a>
+            </span>
+            <span class="badge status-{{ pathway.status }}">{{ pathway.status }}</span>
+            <span class="badge badge-version">v{{ pathway.version }}</span>
+            <span class="badge badge-draft-status">{{ pathway.draft_status }}</span>
+        </div>
+        <div class="pathway-meta">
+            {{ pathway.stages | length }} stage{% if pathway.stages | length != 1 %}s{% endif %}
+        </div>
+        <a href="{{ url_for('workspace', pathway_id=pathway.id) }}" class="btn btn-primary btn-small">
+            {% if pathway.draft_status == 'new' %}Start Building{% else %}Continue Building{% endif %}
+        </a>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<p class="no-data">No Pathways in this domain yet.</p>
+{% endif %}
+
+<a href="{{ url_for('pathway_create', domain_id=domain.id) }}" class="btn btn-primary">Create Pathway</a>
+{% endblock %}

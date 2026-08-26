@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="detail-header">
+    <div>
+        <h2>{{ pathway.name }}</h2>
+        <p class="business-name">{{ pathway.information_domain.name }} &middot; v{{ pathway.version }}</p>
+    </div>
+    <div>
+        <span class="badge status-{{ pathway.status }}">{{ pathway.status }}</span>
+        <span class="badge badge-draft-status">{{ pathway.draft_status }}</span>
+    </div>
+</div>
+
+<div class="workspace-grid">
+    <div class="workspace-main">
+        <div class="card">
+            <h3>Pathway Details</h3>
+            <form method="post" action="{{ url_for('workspace', pathway_id=pathway.id) }}">
+                <input type="hidden" name="form_type" value="pathway">
+                <div class="form-group">
+                    <label for="pathway-name">Name</label>
+                    <input type="text" id="pathway-name" name="name" value="{{ pathway.name }}">
+                </div>
+                <div class="form-group">
+                    <label for="pathway-purpose">Purpose</label>
+                    <textarea id="pathway-purpose" name="purpose" rows="2">{{ pathway.purpose or '' }}</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="pathway-audience">Intended Audience</label>
+                    <input type="text" id="pathway-audience" name="intended_audience" value="{{ pathway.intended_audience or '' }}">
+                </div>
+                <div class="form-group">
+                    <label for="pathway-outcome">Desired Proficiency Outcome</label>
+                    <textarea id="pathway-outcome" name="desired_proficiency_outcome" rows="4">{{ pathway.desired_proficiency_outcome or '' }}</textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Update Pathway</button>
+            </form>
+        </div>
+
+        <div class="stages-section">
+            <h3 class="section-title">Stages</h3>
+            {% for stage in pathway.stages %}
+            <div class="card stage-card">
+                <div class="stage-header">
+                    <span class="stage-number">Stage {{ stage.sequence }}</span>
+                </div>
+                <form method="post" action="{{ url_for('workspace', pathway_id=pathway.id) }}">
+                    <input type="hidden" name="form_type" value="stage">
+                    <input type="hidden" name="stage_id" value="{{ stage.id }}">
+                    <div class="form-group">
+                        <label for="stage-name-{{ stage.id }}">Name</label>
+                        <input type="text" id="stage-name-{{ stage.id }}" name="name" value="{{ stage.name }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="stage-outcome-{{ stage.id }}">Outcome</label>
+                        <textarea id="stage-outcome-{{ stage.id }}" name="outcome" rows="2">{{ stage.outcome or '' }}</textarea>
+                    </div>
+                    <button type="submit" class="btn btn-secondary btn-small">Update Stage</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="workspace-side">
+        <div class="card architect-placeholder">
+            <h3>AI Pathway Architect</h3>
+            <p class="placeholder-message">Conversational Pathway design will be enabled in PA-003.</p>
+            <p class="placeholder-note">In future phases, this is where the SME will talk with the Architect while watching the Pathway emerge on the left.</p>
+        </div>
+    </div>
+</div>
+
+<div class="architecture-summary card">
+    <h4>Architecture Summary</h4>
+    <div class="summary-bar">
+        <div class="summary-item">
+            <span class="summary-value">{{ pathway.stages | length }}</span>
+            <span class="summary-label">Stages</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-value">{{ pathway.milestones | length }}</span>
+            <span class="summary-label">Milestones</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-value">{{ pathway.evidence_items | length }}</span>
+            <span class="summary-label">Evidence</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-value">{{ pathway.resources | length }}</span>
+            <span class="summary-label">Resources</span>
+        </div>
+        <div class="summary-item">
+            <span class="summary-value">{{ pathway.guardrails | length }}</span>
+            <span class="summary-label">Guardrails</span>
+        </div>
+    </div>
+</div>
+{% endblock %}

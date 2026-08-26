@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="welcome-section">
+    <h2>North Star Pathway Architect</h2>
+    <p class="subtitle">Turn expertise into structured proficiency pathways.</p>
+</div>
+
+<h3>Your Information Domains</h3>
+
+{% for domain in domains %}
+<div class="card">
+    <div class="domain-header">
+        <h4>
+            <a href="{{ url_for('domain_detail', domain_id=domain.id) }}">{{ domain.name }}</a>
+            <span class="badge status-active">{{ domain.status }}</span>
+        </h4>
+        {% if domain.description %}
+        <p class="context-description">{{ domain.description }}</p>
+        {% endif %}
+    </div>
+
+    {% set domain_pathways = pathways | selectattr('information_domain_id', 'equalto', domain.id) | list %}
+    {% if domain_pathways %}
+    <div class="pathway-list">
+        {% for pathway in domain_pathways %}
+        <div class="pathway-item">
+            <div class="pathway-info">
+                <span class="pathway-title">
+                    <a href="{{ url_for('workspace', pathway_id=pathway.id) }}">{{ pathway.name }}</a>
+                </span>
+                <span class="badge status-{{ pathway.status }}">{{ pathway.status }}</span>
+                <span class="badge badge-version">v{{ pathway.version }}</span>
+                <span class="badge badge-draft-status">{{ pathway.draft_status }}</span>
+            </div>
+            <div class="pathway-meta">
+                {{ pathway.stages | length }} stage{% if pathway.stages | length != 1 %}s{% endif %}
+            </div>
+            <a href="{{ url_for('workspace', pathway_id=pathway.id) }}" class="btn btn-primary btn-small">
+                {% if pathway.draft_status == 'new' %}Start Building{% else %}Continue Building{% endif %}
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="no-data">No Pathways in this domain yet.</p>
+    {% endif %}
+
+    <a href="{{ url_for('pathway_create', domain_id=domain.id) }}" class="btn btn-secondary">Create Pathway</a>
+</div>
+{% else %}
+<p class="no-data">No Information Domains are currently available.</p>
+{% endfor %}
+{% endblock %}

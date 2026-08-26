@@ -70,8 +70,12 @@ def generate_architect_response(pathway, conversation_messages, user_content):
             temperature=0.4,
         )
     except APIError as e:
-        raise ArchitectAIError(f'AI API request failed: {e}') from e
+        # Log the original OpenAI exception with model and status before wrapping.
+        status = getattr(e, 'status_code', getattr(e, 'status', 'n/a'))
+        logger.exception(f'OpenAI API error: model={model}, status={status}')
+        raise ArchitectAIError(f'OpenAI API request failed: {e}') from e
     except Exception as e:
+        logger.exception(f'OpenAI request error: model={model}')
         raise ArchitectAIError(f'AI request failed: {e}') from e
 
     parsed = completion.choices[0].message.parsed

@@ -465,6 +465,31 @@ class TestArchitect(unittest.TestCase):
         self.assertNotIn('Invalid value', data)
         self.assertNotIn('400', data)
 
+    @patch('architect.pathway_service.generate_architect_response')
+    def test_original_provider_exception_is_logged_server_side(self, mock_ai):
+        with app.app_context():
+            pathway = self._pathway()
+            user = User.query.filter_by(email='sme@example.com').first()
+
+        class DummyOpenAIError(Exception):
+            pass
+
+        original = DummyOpenAIError('OpenAI API status 400 - invalid model for parse')
+        ai_error = ArchitectAIError('OpenAI API request failed')
+        ai_error.__cause__ = original
+
+        mock_ai.side_effect = ai_error
+
+        with self.assertLogs('architect.pathway_service', level='ERROR') as cm:
+            with self.assertRaises(PathwayServiceError):
+                with app.app_context():
+                    process_architect_turn(pathway, user, 'Trigger a logged failure.')
+
+        # The original provider-level exception must be visible in server logs.
+        self.assertEqual(len(cm.output), 1)
+        self.assertIn('Original Architect AI error before wrapping', cm.output[0])
+        self.assertIn('OpenAI API status 400', cm.output[0])
+
 
 if __name__ == '__main__':
     unittest.main()

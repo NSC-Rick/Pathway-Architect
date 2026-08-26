@@ -1,4 +1,5 @@
 """Apply validated Architect proposals to Pathway models and manage conversation persistence."""
+import logging
 from datetime import datetime
 
 from models import (
@@ -20,6 +21,9 @@ from .validation import validate_proposal, ProposalValidationError
 
 class PathwayServiceError(Exception):
     """Raised when a Pathway service operation cannot complete."""
+
+
+logger = logging.getLogger(__name__)
 
 
 def _next_sequence(items, key):
@@ -289,6 +293,9 @@ def process_architect_turn(pathway, user, user_content):
     except ArchitectAIError as e:
         # Convert expected AI errors into a single, safe service-level error.
         # The SME message is already committed and will not be lost.
+        # Log the original OpenAI/root exception before it is wrapped.
+        original = e.__cause__ or e
+        logger.error('Original Architect AI error before wrapping', exc_info=(type(original), original, original.__traceback__))
         raise PathwayServiceError('Architect could not generate a response.') from e
     except Exception as e:
         # Wrap unexpected errors without exposing sensitive details.

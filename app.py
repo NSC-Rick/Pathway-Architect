@@ -300,12 +300,14 @@ def architect_message(pathway_id):
     try:
         ai_response = process_architect_turn(pathway, current_user, user_content)
     except PathwayServiceError as e:
-        flash(f'Architect could not process that message: {e}', 'error')
+        # Log the real provider/implementation error server-side; show a calm, non-technical message.
+        app.logger.error(f'Architect turn failed: {e}')
+        flash('The Architect couldn\'t complete that response. Your message has been saved. Please try again.', 'error')
         return redirect(url_for('workspace', pathway_id=pathway.id))
     except Exception:
         # Log the real error server-side; show a calm user-facing message.
         app.logger.exception('Architect turn failed')
-        flash('The Architect encountered an issue. Your message has not been lost. Please try again.', 'error')
+        flash('The Architect couldn\'t complete that response. Your message has been saved. Please try again.', 'error')
         return redirect(url_for('workspace', pathway_id=pathway.id))
 
     # Render the workspace so the SME can review any proposals before approving.
@@ -348,10 +350,11 @@ def apply_proposal(pathway_id):
         apply_architect_proposal(pathway, current_user, proposal)
         flash('Suggestion applied.', 'success')
     except PathwayServiceError as e:
-        flash(f'Could not apply suggestion: {e}', 'error')
+        app.logger.error(f'Apply proposal failed: {e}')
+        flash('The suggestion could not be applied. Please try again.', 'error')
     except Exception:
         app.logger.exception('Apply proposal failed')
-        flash('The suggestion could not be applied.', 'error')
+        flash('The suggestion could not be applied. Please try again.', 'error')
 
     return redirect(url_for('workspace', pathway_id=pathway.id))
 

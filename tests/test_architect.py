@@ -2,7 +2,7 @@ import json
 import os
 import sys
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(os.path.dirname(__file__))))
 
@@ -296,8 +296,9 @@ class TestArchitect(unittest.TestCase):
         with app.app_context():
             refreshed = Pathway.query.get(pathway.id)
             self.assertEqual(refreshed.name, original_name)
-            # No messages should have been persisted because the turn rolled back.
-            self.assertEqual(ArchitectMessage.query.count(), 0)
+            # Only the conversation opening message should exist; the failed AI
+            # turn should not have added an Architect response.
+            self.assertEqual(ArchitectMessage.query.filter_by(role='architect').count(), 1)
 
     # 14. Apply route updates the workspace.
     @patch('architect.pathway_service.generate_architect_response')
@@ -363,6 +364,106 @@ class TestArchitect(unittest.TestCase):
         with app.app_context():
             refreshed = Stage.query.get(stage.id)
             self.assertEqual(refreshed.name, 'Define the Financing Need (Refined)')
+
+    # --- PA-003.1 role mapping and error UX tests ---
+
+    @patch('architect.ai_service.OpenAI')
+    @patch.dict('os.environ', {'OPENAI_API_KEY': 'test-key'})
+    def test_architect_role_maps_to_openai_assistant(self, mock_openai):
+        with app.app_context():
+            pathway = self._pathway()
+            conversation = ArchitectConversation(pathway_id=pathway.id, user_id=1, status='active')
+            db.session.add(conversation)
+            db.session.commit()
+
+            user_msg = ArchitectMessage(conversation_id=conversation.id, role='user', content='User says.')
+            architect_msg = ArchitectMessage(conversation_id=conversation.id, role='architect', content='Architect says.')
+            db.session.add_all([user_msg, architect_msg])
+            db.session.commit()
+
+            mock_client = MagicMock()
+            mock_choice = MagicMock()
+            mock_choice.message.parsed = _make_response('Response.', [])
+            mock_client.beta.chat.completions.parse.return_value.choices = [mock_choice]
+            mock_openai.return_value = mock_client
+
+            from architect.ai_service import generate_architect_response
+            generate_architect_response(pathway, [user_msg, architect_msg], 'New message.')
+
+            call = mock_client.beta.chat.completions.parse.call_args
+            sent_messages = call.kwargs['messages']
+            self.assertEqual(sent_messages[0]['role'], 'system')
+            self.assertEqual(sent_messages[1]['role'], 'user')
+            self.assertEqual(sent_messages[2]['role'], 'assistant')
+            self.assertEqual(sent_messages[3]['role'], 'user')
+            self.assertEqual(sent_messages[2]['content'], 'Architect says.')
+
+    @patch('architect.ai_service.OpenAI')
+    @patch.dict('os.environ', {'OPENAI_API_KEY': 'test-key'})
+    def test_unknown_persisted_role_defaults_to_user(self, mock_openai):
+        with app.app_context():
+            pathway = self._pathway()
+            conversation = ArchitectConversation(pathway_id=pathway.id, user_id=1, status='active')
+            db.session.add(conversation)
+            db.session.commit()
+
+            odd_msg = ArchitectMessage(conversation_id=conversation.id, role='narrator', content='Narration.')
+            db.session.add(odd_msg)
+            db.session.commit()
+
+            mock_client = MagicMock()
+            mock_choice = MagicMock()
+            mock_choice.message.parsed = _make_response('Response.', [])
+            mock_client.beta.chat.completions.parse.return_value.choices = [mock_choice]
+            mock_openai.return_value = mock_client
+
+            from architect.ai_service import generate_architect_response
+            generate_architect_response(pathway, [odd_msg], 'New message.')
+
+            call = mock_client.beta.chat.completions.parse.call_args
+            sent_messages = call.kwargs['messages']
+            # Unknown role should be mapped to 'user' to avoid an OpenAI 400.
+            self.assertEqual(sent_messages[1]['role'], 'user')
+            self.assertEqual(sent_messages[1]['content'], 'Narration.')
+
+    @patch('architect.pathway_service.generate_architect_response')
+    def test_ai_failure_persists_user_message_but_not_architect_message(self, mock_ai):
+        with app.app_context():
+            pathway = self._pathway()
+            user = User.query.filter_by(email='sme@example.com').first()
+
+        mock_ai.side_effect = ArchitectAIError('OpenAI API request failed: 400')
+
+        with app.app_context():
+            with self.assertRaises(PathwayServiceError):
+                process_architect_turn(pathway, user, 'Persist me on failure.')
+
+        with app.app_context():
+            # SME message is saved even though the AI failed.
+            self.assertEqual(ArchitectMessage.query.filter_by(role='user', content='Persist me on failure.').count(), 1)
+            # No new Architect response is saved beyond the conversation opening message.
+            self.assertEqual(ArchitectMessage.query.filter_by(role='architect').count(), 1)
+
+    @patch('architect.pathway_service.generate_architect_response')
+    def test_user_facing_error_does_not_expose_provider_details(self, mock_ai):
+        with app.app_context():
+            pathway = self._pathway()
+
+        mock_ai.side_effect = ArchitectAIError('OpenAI API request failed: 400 - Invalid value: architect')
+
+        self._login_as_sme()
+        resp = self.client.post(f'/pathway/{pathway.id}/architect', data={
+            'message': 'This should fail gracefully.'
+        }, follow_redirects=True)
+
+        data = resp.get_data(as_text=True)
+        # Jinja HTML-escapes the apostrophe; match the rendered attribute form.
+        self.assertIn('The Architect couldn&#39;t complete that response', data)
+        self.assertIn('Your message has been saved', data)
+        # Provider-specific details should not appear in the rendered HTML.
+        self.assertNotIn('AI API request failed', data)
+        self.assertNotIn('Invalid value', data)
+        self.assertNotIn('400', data)
 
 
 if __name__ == '__main__':

@@ -246,10 +246,11 @@ def _validate_ownership(pathway, user):
 
 
 def process_architect_turn(pathway, user, user_content):
-    """Run one Architect turn: persist SME and Architect messages, then return proposals.
+    """Run one Architect turn: persist the SME message, call the AI, then save the Architect response and proposals.
 
-    The Pathway is NOT altered here. Proposals are returned to the caller
-    (the workspace) so the SME can review and approve or reject each one.
+    The SME message is committed before the AI call so that it is preserved even if
+    the AI fails. The Pathway is NOT altered here. Proposals are returned to the
+    caller (the workspace) so the SME can review and approve or reject each one.
     """
     # Ensure the Pathway and User are bound to the current session.
     pathway = db.session.merge(pathway)
@@ -257,21 +258,26 @@ def process_architect_turn(pathway, user, user_content):
 
     _validate_ownership(pathway, user)
 
+    conversation = None
     try:
+        # First, persist the SME message in its own savepoint/transaction so it
+        # survives an AI failure.
         with db.session.begin_nested():
             conversation = get_or_create_conversation(pathway, user)
             _add_user_message(conversation, user_content)
-            db.session.flush()
+        db.session.commit()
 
-            prior_messages = ArchitectMessage.query.filter_by(
-                conversation_id=conversation.id
-            ).order_by(ArchitectMessage.created_at).all()
+        prior_messages = ArchitectMessage.query.filter_by(
+            conversation_id=conversation.id
+        ).order_by(ArchitectMessage.created_at).all()
 
-            # Remove the just-added user message from the prompt list to avoid a duplicate.
-            prompt_messages = [m for m in prior_messages if m.role != 'user' or m.content != user_content]
+        # Remove the just-added user message from the prompt list to avoid a duplicate.
+        prompt_messages = [m for m in prior_messages if m.role != 'user' or m.content != user_content]
 
-            ai_response = generate_architect_response(pathway, prompt_messages, user_content)
+        ai_response = generate_architect_response(pathway, prompt_messages, user_content)
 
+        # Save the Architect's conversational response.
+        with db.session.begin_nested():
             _add_architect_message(conversation, ai_response.message)
 
             # Update draft status to reflect active Architect engagement.
@@ -282,10 +288,11 @@ def process_architect_turn(pathway, user, user_content):
         return ai_response
     except ArchitectAIError as e:
         # Convert expected AI errors into a single, safe service-level error.
-        raise PathwayServiceError(str(e)) from e
+        # The SME message is already committed and will not be lost.
+        raise PathwayServiceError('Architect could not generate a response.') from e
     except Exception as e:
         # Wrap unexpected errors without exposing sensitive details.
-        raise PathwayServiceError(f'Architect turn failed: {e}') from e
+        raise PathwayServiceError('Architect turn failed.') from e
 
 
 def apply_architect_proposal(pathway, user, proposal):
